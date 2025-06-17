@@ -2,8 +2,8 @@ package main
 
 import (
     "facegram/database"
-	"log"
 	"github.com/gin-gonic/gin"
+    "facegram/controllers"
 )
 
 func main() {
@@ -11,14 +11,7 @@ func main() {
     
     r := gin.Default()
 
-    r.GET("/ping", func(c *gin.Context) {
-        c.JSON(200, gin.H{
-            "message": "pong",
-        })
-    })
+    r.POST("/api/v1/auth/register", controllers.Register)
 
-    log.Println("Server running at http://localhost:8080")
-    if err := r.Run(); err != nil {
-        log.Fatal("Failed to run server: ", err)
-    }
+    r.Run()
 }
