@@ -1,9 +1,11 @@
 package main
 
 import (
-    "facegram/database"
+	"facegram/controllers"
+	"facegram/database"
+	"facegram/middlewares"
+
 	"github.com/gin-gonic/gin"
-    "facegram/controllers"
 )
 
 func main() {
@@ -13,6 +15,10 @@ func main() {
 
     r.POST("/api/v1/auth/register", controllers.Register)
     r.POST("/api/v1/auth/login", controllers.Login)
+
+    auth := r.Group("/")
+    auth.Use(middlewares.AuthMiddleware())
+    auth.POST("/api/v1/posts", controllers.CreatePost)
 
     r.Run(":9090")
 }

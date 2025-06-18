@@ -12,6 +12,7 @@ type User struct {
 	Password  string `json:"password"`
 	Bio       string `json:"bio"`
 	IsPrivate bool   `json:"is_private"`
+	Posts      []Post `gorm:"foreignKey:UserID"`
 }
 
 func (u *User) HashPassword() error {

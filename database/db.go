@@ -1,10 +1,10 @@
 package database
 
 import (
+	"facegram/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
-	"facegram/models"
 )
 
 var DB *gorm.DB
@@ -18,7 +18,7 @@ func ConnectDB() {
 		log.Fatal("Failed to connect database", err)
 	}
 
-	err = DB.AutoMigrate(&models.User{})
+	err = DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Attachment{})
 	if err != nil {
 		log.Fatal("Migration failed", err)
 	}
