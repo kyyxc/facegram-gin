@@ -12,6 +12,7 @@ func main() {
     r := gin.Default()
 
     r.POST("/api/v1/auth/register", controllers.Register)
+    r.POST("/api/v1/auth/login", controllers.Login)
 
-    r.Run()
+    r.Run(":9090")
 }
