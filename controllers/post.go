@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -125,4 +126,31 @@ func DeletePost(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func GetPost(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "0"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+
+	if page < 0 {
+		page = 0
+	}
+
+	if size < 10 || size > 100 {
+		size = 10
+	}
+
+	var posts []models.Post
+
+	offset := page * size
+	if err := database.DB.Offset(offset).Limit(size).Preload("User").Preload("Attachments").Find(&posts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"page":  page,
+		"size":  size,
+		"posts": posts,
+	})
 }
