@@ -33,16 +33,15 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			if float64(time.Now().Unix()) > claims["exp"].(float64) {
-				c.AbortWithStatus(http.StatusUnauthorized)
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
+				return
 			}
 
 			var user models.User
-			database.DB.First(&user, claims["user_id"])
-
-			if user.ID == 0 {
-				c.AbortWithStatus(http.StatusUnauthorized)
+			if err := database.DB.First(&user, claims["user_id"]).Error; err != nil {
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"messsage": "User not found"})
+				return
 			}
-
 			c.Set("userID", user.ID)
 
 			c.Next()

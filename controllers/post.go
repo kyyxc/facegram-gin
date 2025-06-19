@@ -79,7 +79,6 @@ func CreatePost(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Create post success"})
-
 }
 
 func isValidImage(file *multipart.FileHeader) bool {
@@ -93,4 +92,37 @@ var allowedExts = map[string]bool{
 	".png":  true,
 	".webp": true,
 	".gif":  true,
+}
+
+func DeletePost(c *gin.Context) {
+	id := c.Param("id")
+	userId, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		return
+	}
+
+	var post models.Post
+
+	if err := database.DB.Preload("Attachments").First(&post, id).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"message": "Post not found"})
+		return
+	}
+
+	if err := database.DB.Where("post_id", post.ID).Delete(&models.Attachment{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user's posts"})
+		return
+	}
+
+	if post.UserID != userId {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthenticated"})
+		return
+	}
+
+	if err := database.DB.Delete(&post, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed delete post"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }

@@ -9,16 +9,17 @@ import (
 )
 
 func main() {
-    database.ConnectDB()
-    
-    r := gin.Default()
+	database.ConnectDB()
 
-    r.POST("/api/v1/auth/register", controllers.Register)
-    r.POST("/api/v1/auth/login", controllers.Login)
+	r := gin.Default()
 
-    auth := r.Group("/")
-    auth.Use(middlewares.AuthMiddleware())
-    auth.POST("/api/v1/posts", controllers.CreatePost)
+	r.POST("/api/v1/auth/register", controllers.Register)
+	r.POST("/api/v1/auth/login", controllers.Login)
 
-    r.Run(":9090")
+	auth := r.Group("/")
+	auth.Use(middlewares.AuthMiddleware())
+	auth.POST("/api/v1/posts", controllers.CreatePost)
+	auth.DELETE("/api/v1/posts/:id", controllers.DeletePost)
+
+	r.Run(":9090")
 }
