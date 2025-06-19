@@ -13,7 +13,7 @@ import (
 )
 
 type PostInput struct {
-	Caption string `json:"caption" binding:"required"`
+	Caption string `json:"caption" form:"caption" binding:"required"`
 }
 
 func CreatePost(c *gin.Context) {
@@ -27,7 +27,7 @@ func CreatePost(c *gin.Context) {
 
 	var input PostInput
 
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBind(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid field", "errors": err.Error()})
 		return
 	}
@@ -53,7 +53,6 @@ func CreatePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Attachments is required"})
 		return
 	}
-
 	for _, file := range files {
 		if !isValidImage(file) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -68,7 +67,6 @@ func CreatePost(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 			return
 		}
-
 		attachments := models.Attachment{
 			StoragePath: savePath,
 			PostID:      post.ID,

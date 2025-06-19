@@ -1,10 +1,12 @@
 package middlewares
 
 import (
-	"fmt"
-	"log"
+	"facegram/database"
+	"facegram/models"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,44 +15,40 @@ import (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing or invalid Authorization header"})
+		fields := strings.Fields(authHeader)
+		if len(fields) != 2 || strings.ToLower(fields[0]) != "bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		tokenStr := fields[1]
 
-		// Parse token
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-			// Validasi metode signing
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte("FACEGRAM"), nil
-		})
-		if err != nil || !token.Valid {
+			return []byte(os.Getenv("SECRET")), nil
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
 
-		// Ambil claims
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-			return
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if float64(time.Now().Unix()) > claims["exp"].(float64) {
+				c.AbortWithStatus(http.StatusUnauthorized)
+			}
+
+			var user models.User
+			database.DB.First(&user, claims["user_id"])
+
+			if user.ID == 0 {
+				c.AbortWithStatus(http.StatusUnauthorized)
+			}
+
+			c.Set("userID", user.ID)
+
+			c.Next()
+		} else {
+			c.AbortWithStatus(http.StatusUnauthorized)
 		}
 
-		// Ambil user_id
-		userIDFloat, ok := claims["user_id"].(float64)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid user_id in token"})
-			return
-		}
-
-		// Simpan userID ke context
-		userID := uint(userIDFloat)
-		c.Set("userID", userID)
-
-		c.Next()
 	}
 }
