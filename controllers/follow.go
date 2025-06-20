@@ -4,6 +4,7 @@ import (
 	"facegram/database"
 	"facegram/models"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -106,4 +107,57 @@ func Unfollow(c *gin.Context) {
 	}
 
 	c.Status(204)
+}
+
+type FollowingResponse struct {
+	ID uint `json:"id"`
+
+	Username  string `json:"username"`
+	FullName  string `json:"full_name"`
+	Bio       string `json:"bio"`
+	IsPrivate bool   `json:"is_private"`
+
+	CreatedAt   time.Time `json:"created_at"`
+	IsRequested bool      `json:"is_requested"`
+}
+
+func GetFollowing(c *gin.Context) {
+	username := c.Param("username")
+	var user models.User
+
+	if err := database.DB.Where("username", username).First(&user).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+		return
+	}
+
+	var followingIDs []uint
+
+	if err := database.DB.Where("follower_id", user.ID).Model(&models.Follow{}).Pluck("id", &followingIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed get pluck id"})
+		return
+	}
+
+	var followings []models.Follow
+
+	if err := database.DB.Where("id IN ?", followingIDs).Preload("Following").Find(&followings).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed get followings"})
+		return
+	}
+
+	var followingsUser []FollowingResponse
+
+	for _, follow := range followings {
+		user := follow.Following
+		followingsUser = append(followingsUser, FollowingResponse{
+			ID:          user.ID,
+			Username:    user.Username,
+			FullName:    user.FullName,
+			Bio:         user.Bio,
+			IsPrivate:   user.IsPrivate,
+			CreatedAt:   user.CreatedAt,
+			IsRequested: !follow.IsAccepted,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"following": followingsUser})
 }
