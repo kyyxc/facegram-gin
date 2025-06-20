@@ -26,7 +26,7 @@ func Register(c *gin.Context) {
 	var input RegisterInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid field", "error": err.Error()})
 		return
 	}
 
@@ -40,7 +40,7 @@ func Register(c *gin.Context) {
 
 	var existing models.User
 	if err := database.DB.Where("username = ?", input.Username).First(&existing).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "username already exists"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username already exists"})
 		return
 	}
 
@@ -74,17 +74,17 @@ func Login(c *gin.Context) {
 	var input LoginInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid field", "errors": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid field", "error": err.Error()})
 	}
 
 	var user models.User
 	if err := database.DB.Where("username = ?", input.Username).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Wrong username or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong username or password"})
 		return
 	}
 
 	if !user.CheckPassword(input.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Wrong username or password"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong username or password"})
 		return
 	}
 

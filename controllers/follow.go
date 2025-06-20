@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"errors"
 	"facegram/database"
 	"facegram/models"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func Follow(c *gin.Context) {
@@ -20,13 +22,21 @@ func Follow(c *gin.Context) {
 	var user models.User
 
 	if err := database.DB.Where("username", username).First(&user).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	var userLogged models.User
 	if err := database.DB.First(&userLogged, userIDRaw).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "User logged not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User logged not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -62,7 +72,7 @@ func Follow(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&newFollow).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to follow"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -83,13 +93,21 @@ func Unfollow(c *gin.Context) {
 	var user models.User
 
 	if err := database.DB.Where("username", username).First(&user).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	var userLogged models.User
 	if err := database.DB.First(&userLogged, userIDRaw).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "User logged not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User logged not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -97,12 +115,16 @@ func Unfollow(c *gin.Context) {
 	if err := database.DB.Where("follower_id = ?", userLogged.ID).
 		Where("following_id", user.ID).
 		First(&follow).Error; err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "You are not following the user"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "You are not following the user"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if err := database.DB.Delete(&follow).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unfollow"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -126,21 +148,29 @@ func GetFollowing(c *gin.Context) {
 	var user models.User
 
 	if err := database.DB.Where("username", username).First(&user).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	var followingIDs []uint
 
-	if err := database.DB.Where("follower_id", user.ID).Model(&models.Follow{}).Pluck("id", &followingIDs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed get pluck id"})
+	if err := database.DB.Where("follower_id", user.ID).
+		Model(&models.Follow{}).
+		Pluck("id", &followingIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	var followings []models.Follow
 
-	if err := database.DB.Where("id IN ?", followingIDs).Preload("Following").Find(&followings).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed get followings"})
+	if err := database.DB.Where("id IN ?", followingIDs).
+		Preload("Following").
+		First(&followings).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -166,24 +196,37 @@ func Accept(c *gin.Context) {
 	username := c.Param("username")
 	userIDRaw, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "User id not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User id not found"})
 	}
 
 	var user models.User
 	var userLogged models.User
 
-	if err := database.DB.Where("username = ?", username).Find(&user).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"message": "user not found"})
+	if err := database.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	if err := database.DB.First(&userLogged, userIDRaw).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "User logged not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User logged not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	var follow models.Follow
-	if err := database.DB.Where("follower_id", user.ID).Where("following_id", userLogged.ID).Find(&follow).Error; err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "The user is not following you"})
+	if err := database.DB.Where("follower_id", user.ID).Where("following_id", userLogged.ID).First(&follow).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "The user is not following you"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -212,14 +255,14 @@ func GetFollower(c *gin.Context) {
 	var followerIDs []uint
 
 	if err := database.DB.Where("following_id", user.ID).Model(&models.Follow{}).Pluck("id", &followerIDs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed get pluck id"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	var followers []models.Follow
 
-	if err := database.DB.Where("id IN ?", followerIDs).Preload("Follower").Find(&followers).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed get followers"})
+	if err := database.DB.Where("id IN ?", followerIDs).Preload("Follower").First(&followers).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

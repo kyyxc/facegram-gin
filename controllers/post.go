@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"facegram/database"
 	"facegram/models"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type PostInput struct {
@@ -29,7 +31,7 @@ func CreatePost(c *gin.Context) {
 	var input PostInput
 
 	if err := c.ShouldBind(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid field", "errors": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid field", "error": err.Error()})
 		return
 	}
 
@@ -106,22 +108,26 @@ func DeletePost(c *gin.Context) {
 	var post models.Post
 
 	if err := database.DB.Preload("Attachments").First(&post, id).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"message": "Post not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"message": "Post not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if err := database.DB.Where("post_id", post.ID).Delete(&models.Attachment{}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user's posts"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if post.UserID != userId {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthenticated"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthenticated"})
 		return
 	}
 
 	if err := database.DB.Delete(&post, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed delete post"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed delete post"})
 		return
 	}
 
@@ -143,8 +149,8 @@ func GetPost(c *gin.Context) {
 	var posts []models.Post
 
 	offset := page * size
-	if err := database.DB.Offset(offset).Limit(size).Preload("User").Preload("Attachments").Find(&posts).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+	if err := database.DB.Offset(offset).Limit(size).Preload("User").Preload("Attachments").First(&posts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"errors"
 	"facegram/database"
 	"facegram/models"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func GetUser(c *gin.Context) {
@@ -28,7 +30,7 @@ func GetUser(c *gin.Context) {
 	followingsIds = append(followingsIds, userIDRaw.(uint))
 
 	var users []models.User
-	if err := database.DB.Where("id NOT IN ?", followingsIds).Find(&users).Error; err != nil {
+	if err := database.DB.Where("id NOT IN ?", followingsIds).First(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -60,13 +62,17 @@ func ShowUser(c *gin.Context) {
 		Preload("Followers").
 		Preload("Followings").
 		First(&user).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"message": "User not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "You are not following the user"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	userLoggedID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "User logged id not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User logged id not found"})
 		return
 	}
 	isYourAccount := userLoggedID == user.ID
