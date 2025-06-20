@@ -53,7 +53,7 @@ func Follow(c *gin.Context) {
 	if user.IsPrivate {
 		status = "requested"
 	}
-	
+
 	newFollow := models.Follow{
 		FollowerID:  user.ID,
 		FollowingID: userLogged.ID,
@@ -69,4 +69,41 @@ func Follow(c *gin.Context) {
 		"message": "Follow success",
 		"status":  status,
 	})
+}
+
+func Unfollow(c *gin.Context) {
+	username := c.Param("username")
+	userIDRaw, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		return
+	}
+
+	var user models.User
+
+	if err := database.DB.Where("username", username).First(&user).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "User not found"})
+		return
+	}
+
+	var userLogged models.User
+	if err := database.DB.First(&userLogged, userIDRaw).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "User logged not found"})
+		return
+	}
+
+	var follow models.Follow
+	if err := database.DB.Where("follower_id = ?", user.ID).
+		Where("following_id", userLogged.ID).
+		First(&follow).Error; err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "You are not following the user"})
+		return
+	}
+
+	if err := database.DB.Delete(&follow).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unfollow"})
+		return
+	}
+
+	c.Status(204)
 }
