@@ -5,6 +5,7 @@ import (
 	"facegram/database"
 	"facegram/models"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -137,20 +138,17 @@ func DeletePost(c *gin.Context) {
 func GetPost(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "0"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+	log.Println("Query size:", c.Query("size"))
 
 	if page < 0 {
 		page = 0
 	}
 
-	if size < 10 || size > 100 {
-		size = 10
-	}
-
 	var posts []models.Post
 
 	offset := page * size
-	if err := database.DB.Offset(offset).Limit(size).Preload("User").Preload("Attachments").First(&posts).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := database.DB.Offset(offset).Limit(size).Preload("User").Preload("Attachments").Find(&posts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get posts"})
 		return
 	}
 

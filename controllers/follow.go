@@ -169,7 +169,7 @@ func GetFollowing(c *gin.Context) {
 
 	if err := database.DB.Where("id IN ?", followingIDs).
 		Preload("Following").
-		First(&followings).Error; err != nil {
+		Find(&followings).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -261,7 +261,7 @@ func GetFollower(c *gin.Context) {
 
 	var followers []models.Follow
 
-	if err := database.DB.Where("id IN ?", followerIDs).Preload("Follower").First(&followers).Error; err != nil {
+	if err := database.DB.Where("id IN ?", followerIDs).Preload("Follower").Find(&followers).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

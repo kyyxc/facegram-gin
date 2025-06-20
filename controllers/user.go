@@ -30,7 +30,7 @@ func GetUser(c *gin.Context) {
 	followingsIds = append(followingsIds, userIDRaw.(uint))
 
 	var users []models.User
-	if err := database.DB.Where("id NOT IN ?", followingsIds).First(&users).Error; err != nil {
+	if err := database.DB.Where("id NOT IN ?", followingsIds).Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -81,7 +81,7 @@ func ShowUser(c *gin.Context) {
 	var follow models.Follow
 	if err := database.DB.Where("following_id", user.ID).
 		Where("follower_id", userLoggedID).
-		First(&follow).
+		Find(&follow).
 		Error; err != nil {
 		followingStatus = "not-following"
 	} else {
