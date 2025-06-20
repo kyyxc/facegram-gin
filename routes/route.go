@@ -26,5 +26,9 @@ func SetupRoute(route *gin.Engine) {
 		auth.POST("/users/:username/follow", controllers.Follow)
 		auth.DELETE("/users/:username/unfollow", controllers.Unfollow)
 		auth.GET("/users/:username/following", controllers.GetFollowing)
+
+		// Unfollow
+		auth.PUT("/users/:username/accept", controllers.Accept)
+		auth.GET("/users/:username/followers", controllers.GetFollower)
 	}
 }
