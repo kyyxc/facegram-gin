@@ -30,5 +30,9 @@ func SetupRoute(route *gin.Engine) {
 		// Unfollow
 		auth.PUT("/users/:username/accept", controllers.Accept)
 		auth.GET("/users/:username/followers", controllers.GetFollower)
+
+		// Users
+		auth.GET("/users", controllers.GetUser)
+		auth.GET("/users/:username", controllers.ShowUser)
 	}
 }

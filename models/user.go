@@ -20,9 +20,9 @@ type User struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 
-	Posts      *[]Post   `gorm:"foreignKey:UserID" json:"posts,omitempty"`
-	Followings *[]Follow `gorm:"foreignKey:FollowerID" json:"followings,omitempty"`
-	Followers  *[]Follow `gorm:"foreignKey:FollowingID" json:"followers,omitempty"`
+	Posts      []Post   `gorm:"foreignKey:UserID" json:"posts,omitempty"`
+	Followings []Follow `gorm:"foreignKey:FollowerID" json:"followings,omitempty"`
+	Followers  []Follow `gorm:"foreignKey:FollowingID" json:"followers,omitempty"`
 }
 
 func (u *User) HashPassword() error {
