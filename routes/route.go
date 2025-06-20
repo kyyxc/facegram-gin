@@ -21,5 +21,8 @@ func SetupRoute(route *gin.Engine) {
 		auth.POST("/posts", controllers.CreatePost)
 		auth.DELETE("/posts/:id", controllers.DeletePost)
 		auth.GET("/posts", controllers.GetPost)
+
+		// Follow
+		auth.POST("/users/:username/follow", controllers.Follow)
 	}
 }

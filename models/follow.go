@@ -12,8 +12,7 @@ type Follow struct {
 	IsAccepted  bool `json:"is_accepted"`
 
 	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-
+	
 	Follower  *User `gorm:"constraint,OnUpdate:CASCADE,OnDelete:SET NULL;" json:"follower,omitempty"`
 	Following *User `gorm:"constraint,OnUpdate:CASCADE,OnDelete:SET NULL" json:"following,omitempty"`
 }
